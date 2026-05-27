@@ -46,8 +46,8 @@ export default function FormScreen({route, navigation}: any) {
   };
 
   const handleSave = async () => {
-    if (!ci.trim() || !nombre.trim()) {
-      Alert.alert('Error', 'CI y Nombre son obligatorios');
+    if (!nombre.trim()) {
+      Alert.alert('Error', 'El nombre es obligatorio');
       return;
     }
 
@@ -84,7 +84,7 @@ export default function FormScreen({route, navigation}: any) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled">
         <Field
-          label="CI *"
+          label="CI"
           value={ci}
           onChangeText={setCi}
           placeholder="1234567"

@@ -2,13 +2,6 @@ import {Persona} from '../database/types';
 
 export type FiltroFecha = 'hoy' | 'semana' | 'mes' | null;
 
-function getMonthDay(date: Date) {
-  return {
-    month: date.getMonth(), // 0-11
-    day: date.getDate(),
-  };
-}
-
 export function filtrarPersonas(
   personas: Persona[],
   query: string,

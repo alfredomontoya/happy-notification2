@@ -11,11 +11,12 @@ import {
 import {pick, types} from '@react-native-documents/picker';
 import * as XLSX from 'xlsx';
 import {colors} from '../theme/colors';
-import {importPersonas} from '../database/personas';
+import {importPersonas, limpiarPersonas} from '../database/personas';
 
-type RowData = string[];
+type RowData = any[];
 
 const CAMPOS = ['ci', 'nombre', 'cargo', 'dependencia', 'fecha_nacimiento'] as const;
+const CAMPOS_REQUERIDOS = ['nombre', 'fecha_nacimiento'];
 const CAMPOS_LABELS: Record<string, string> = {
   ci: 'CI',
   nombre: 'Nombre',
@@ -23,6 +24,60 @@ const CAMPOS_LABELS: Record<string, string> = {
   dependencia: 'Dependencia',
   fecha_nacimiento: 'Fecha de Nac.',
 };
+
+function formatearPreview(valor: any): string {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    const d = String(valor.getDate()).padStart(2, '0');
+    const m = String(valor.getMonth() + 1).padStart(2, '0');
+    const y = valor.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+  return String(valor ?? '').slice(0, 30);
+}
+
+function convertirFecha(raw: any): string {
+  if (!raw) {
+    return '';
+  }
+
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const y = raw.getFullYear();
+    const m = String(raw.getMonth() + 1).padStart(2, '0');
+    const d = String(raw.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const str = String(raw).trim();
+
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+  if (iso) {
+    return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  }
+
+  const num = Number(str);
+  if (!isNaN(num) && num > 10000 && num < 200000) {
+    const date = new Date((num - 25569) * 86400 * 1000);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const partes = str.split(/[/\-.]/);
+  if (partes.length === 3) {
+    if (partes[0].length === 4) {
+      const m = partes[1].padStart(2, '0');
+      const d = partes[2].padStart(2, '0');
+      return `${partes[0]}-${m}-${d}`;
+    }
+    const d = partes[0].padStart(2, '0');
+    const m = partes[1].padStart(2, '0');
+    const y = partes[2].length === 2 ? '20' + partes[2] : partes[2];
+    return `${y}-${m}-${d}`;
+  }
+
+  return str;
+}
 
 export default function ImportScreen({navigation}: any) {
   const [headers, setHeaders] = useState<string[]>([]);
@@ -44,10 +99,10 @@ export default function ImportScreen({navigation}: any) {
       const file = result[0];
       const response = await fetch(file.uri);
       const blob = await response.arrayBuffer();
-      const workbook = XLSX.read(blob, {type: 'array'});
+      const workbook = XLSX.read(blob, {type: 'array', cellDates: true});
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json<string[]>(sheet, {header: 1});
+      const data = XLSX.utils.sheet_to_json<any[]>(sheet, {header: 1, raw: true});
 
       if (data.length < 2) {
         Alert.alert('Error', 'El archivo debe tener al menos 2 filas (encabezados + datos)');
@@ -83,10 +138,10 @@ export default function ImportScreen({navigation}: any) {
 
   const handleImport = async () => {
     const usedFields = new Set(Object.values(mapping));
-    const missing = CAMPOS.filter(c => !usedFields.has(c));
+    const missing = CAMPOS_REQUERIDOS.filter(c => !usedFields.has(c));
     if (missing.length > 0) {
       Alert.alert(
-        'Faltan campos',
+        'Faltan campos requeridos',
         `Debes mapear: ${missing.map(c => CAMPOS_LABELS[c]).join(', ')}`,
       );
       return;
@@ -97,7 +152,10 @@ export default function ImportScreen({navigation}: any) {
       const personas = rows.map(row => {
         const persona: any = {};
         Object.entries(mapping).forEach(([colIdx, campo]) => {
-          persona[campo] = String(row[Number(colIdx)] ?? '').trim();
+          const raw = row[Number(colIdx)];
+          persona[campo] = campo === 'fecha_nacimiento'
+            ? convertirFecha(raw)
+            : String(raw ?? '').trim();
         });
         return persona;
       });
@@ -111,6 +169,25 @@ export default function ImportScreen({navigation}: any) {
     }
   };
 
+  const handleClearAll = () => {
+    Alert.alert(
+      'Limpiar todos los datos',
+      '¿Estás seguro? Se eliminarán todas las personas registradas.',
+      [
+        {text: 'Cancelar', style: 'cancel'},
+        {
+          text: 'Limpiar',
+          style: 'destructive',
+          onPress: async () => {
+            await limpiarPersonas();
+            Alert.alert('Listo', 'Todos los datos fueron eliminados');
+            navigation.goBack();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {headers.length === 0 ? (
@@ -122,6 +199,11 @@ export default function ImportScreen({navigation}: any) {
           </Text>
           <TouchableOpacity style={styles.pickBtn} onPress={handlePickFile}>
             <Text style={styles.pickBtnText}>Seleccionar archivo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.clearBtn}
+            onPress={handleClearAll}>
+            <Text style={styles.clearBtnText}>Limpiar todos los datos</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -151,7 +233,7 @@ export default function ImportScreen({navigation}: any) {
             <View key={ri} style={styles.previewRow}>
               {Object.entries(mapping).map(([colIdx, campo]) => (
                 <Text key={campo} style={styles.previewCell}>
-                  {campo}: {String(row[Number(colIdx)] ?? '').slice(0, 30)}
+                  {campo}: {formatearPreview(row[Number(colIdx)])}
                 </Text>
               ))}
             </View>
@@ -271,6 +353,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  clearBtn: {
+    marginTop: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  clearBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.danger,
   },
   sectionTitle: {
     fontSize: 18,

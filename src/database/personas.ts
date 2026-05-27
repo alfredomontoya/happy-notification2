@@ -67,18 +67,16 @@ export async function importPersonas(
   let count = 0;
   for (const p of data) {
     try {
-      const [existing] = await db.executeSql(
-        'SELECT id FROM personas WHERE ci = ?',
-        [p.ci],
-      );
-      if (existing.rows.length === 0) {
-        await createPersona(db, p);
-        count++;
-      }
-    } catch {
       await createPersona(db, p);
       count++;
+    } catch {
+      // saltar registros con error
     }
   }
   return count;
+}
+
+export async function limpiarPersonas(): Promise<void> {
+  const db = await getDatabase();
+  await db.executeSql('DELETE FROM personas');
 }

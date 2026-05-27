@@ -5,6 +5,7 @@ import HomeScreen from '../screens/HomeScreen';
 import DetailScreen from '../screens/DetailScreen';
 import FormScreen from '../screens/FormScreen';
 import ImportScreen from '../screens/ImportScreen';
+import CreditsScreen from '../screens/CreditsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -39,6 +40,11 @@ export default function AppNavigator() {
           name="Import"
           component={ImportScreen}
           options={{title: 'Importar Excel'}}
+        />
+        <Stack.Screen
+          name="Credits"
+          component={CreditsScreen}
+          options={{title: 'Créditos'}}
         />
       </Stack.Navigator>
     </NavigationContainer>

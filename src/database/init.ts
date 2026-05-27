@@ -19,7 +19,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   await db.executeSql(`
     CREATE TABLE IF NOT EXISTS personas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ci TEXT NOT NULL,
+      ci TEXT DEFAULT '',
       nombre TEXT NOT NULL,
       cargo TEXT DEFAULT '',
       dependencia TEXT DEFAULT '',

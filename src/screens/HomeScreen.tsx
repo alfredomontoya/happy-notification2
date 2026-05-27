@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {
   FlatList,
   Image,
@@ -20,6 +20,7 @@ import {es} from 'date-fns/locale';
 import PersonaCard from '../components/PersonaCard';
 import FiltroChips from '../components/FiltroChips';
 import NotificationBanner from '../components/NotificationBanner';
+import {showBirthdayNotification} from '../services/notifications';
 
 
 // ===============================
@@ -93,10 +94,12 @@ useEffect(() => {
   });
 
   if (hoyCumple.length > 0) {
-    setBannerData({
-      names: hoyCumple.map(p => p.nombre),
-    });
+    const names = hoyCumple.map(p => p.nombre);
+    setBannerData({names});
     setShowBanner(true);
+
+    showBirthdayNotification(names);
+
     return;
   }
 
@@ -170,6 +173,11 @@ useEffect(() => {
             <Text style={styles.subtitle}>Cumpleañeros</Text>
           </View>
           <Text style={styles.headerDate}>{fechaActual}</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Credits')}
+            style={styles.creditsBtn}>
+            <Text style={styles.creditsIcon}>{'\u2699\uFE0E'}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -270,6 +278,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
     fontWeight: '500',
+  },
+  creditsBtn: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  creditsIcon: {
+    fontSize: 22,
+    color: colors.white,
   },
   searchContainer: {
     paddingHorizontal: 16,
