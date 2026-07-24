@@ -11,11 +11,7 @@ import {
 } from 'react-native';
 import {useTheme} from '../context/ThemeContext';
 import {Persona} from '../database/types';
-import {
-  getAllPersonas,
-  getPersonasByMonth,
-  getPersonasByDay,
-} from '../database/personas';
+import {getAllPersonas, refreshPersonas} from '../database/personas';
 import {getCachedPersonas} from '../database/personasCache';
 import {FiltroFecha} from '../utils/filtros';
 import {format} from 'date-fns';
@@ -69,9 +65,13 @@ export default function HomeScreen({navigation}: any) {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await cargarDatos();
-    setRefreshing(false);
-  }, [cargarDatos]);
+    try {
+      const data = await refreshPersonas();
+      setPersonas(data);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     cargarDatos();
@@ -82,12 +82,10 @@ export default function HomeScreen({navigation}: any) {
       const cached = getCachedPersonas();
       if (cached) {
         setPersonas(cached);
-      } else {
-        cargarDatos();
       }
     });
     return unsubscribe;
-  }, [navigation, cargarDatos]);
+  }, [navigation]);
 
   useEffect(() => {
     if (personas.length === 0) return;
@@ -135,25 +133,20 @@ export default function HomeScreen({navigation}: any) {
 
   const handleChipChange = useCallback((filtro: FiltroFecha) => {
     setFiltroFecha(filtro);
-
-    if (filtro === 'hoy') {
-      const {month, day} = getMonthDay();
-      getPersonasByDay(month, day).then(setPersonas);
-    } else if (filtro === 'mes') {
-      const {month} = getMonthDay();
-      getPersonasByMonth(month).then(setPersonas);
-    } else {
-      getAllPersonas().then(setPersonas);
-    }
   }, []);
 
   const filtradas = (() => {
-    let result: Persona[];
+    let result = personas;
 
-    if (filtroFecha === 'hoy' || filtroFecha === 'mes') {
-      result = personas;
-    } else {
-      result = personas;
+    if (filtroFecha === 'hoy') {
+      const {month, day} = getMonthDay();
+      result = result.filter(
+        p =>
+          (p.birthday_month === month && p.birthday_day === day),
+      );
+    } else if (filtroFecha === 'mes') {
+      const {month} = getMonthDay();
+      result = result.filter(p => p.birthday_month === month);
     }
 
     if (query.trim()) {

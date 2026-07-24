@@ -1,6 +1,6 @@
 import type {Persona} from './types';
 
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 30 * 60 * 1000;
 
 let cache: Persona[] | null = null;
 let cacheTimestamp = 0;

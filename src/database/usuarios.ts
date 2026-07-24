@@ -3,6 +3,16 @@ import type {UserProfile, Permissions} from './types';
 import auth from '@react-native-firebase/auth';
 import type {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
 
+async function callFunction(name: string, data: Record<string, any>) {
+  const user = auth().currentUser;
+  console.log('callFunction: user?', !!user, 'name:', name);
+  const token = user ? await user.getIdToken(true) : null;
+  console.log('callFunction: token?', !!token);
+  const cloudFn = getFunctions().httpsCallable(name);
+  const result = await cloudFn({...data, __authToken: token});
+  return result;
+}
+
 const COLLECTION = 'usuarios';
 
 function docRef(uid: string) {
@@ -44,9 +54,15 @@ export async function createUserWithPermissions(
   password: string,
   profile: Omit<UserProfile, 'uid' | 'created_at' | 'created_by'>,
 ): Promise<string> {
-  const cloudFn = getFunctions().httpsCallable('createUser');
-  const result = await cloudFn({email, password, profile});
+  const result = await callFunction('createUser', {email, password, profile});
   return (result.data as any).uid;
+}
+
+export async function updateUserPassword(
+  uid: string,
+  newPassword: string,
+): Promise<void> {
+  await callFunction('updateUserPassword', {uid, newPassword});
 }
 
 export async function updateUserProfile(

@@ -13,6 +13,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   await db.executeSql(`
     CREATE TABLE IF NOT EXISTS personas (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       ci TEXT NOT NULL DEFAULT '',
       nombre TEXT NOT NULL,
       cargo TEXT NOT NULL DEFAULT '',
@@ -28,4 +29,13 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 
 export async function initializeDatabase(): Promise<void> {
   await getDatabase();
+}
+
+export async function migrateSchemaIfNeeded(): Promise<void> {
+  const database = await getDatabase();
+  try {
+    await database.executeSql('ALTER TABLE personas ADD COLUMN user_id TEXT NOT NULL DEFAULT \'\'');
+  } catch {
+    // Column already exists — ignore
+  }
 }

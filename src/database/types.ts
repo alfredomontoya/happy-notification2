@@ -1,5 +1,6 @@
 export interface Persona {
   id: string;
+  user_id: string;
   ci: string;
   nombre: string;
   cargo: string;

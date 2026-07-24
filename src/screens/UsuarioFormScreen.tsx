@@ -11,7 +11,12 @@ import {
 } from 'react-native';
 import {useTheme} from '../context/ThemeContext';
 import type {Permissions, PermissionLevel, UserProfile} from '../database/types';
-import {createUserWithPermissions, updateUserProfile} from '../database/usuarios';
+import {
+  createUserWithPermissions,
+  updateUserProfile,
+  updateUserPassword,
+} from '../database/usuarios';
+import {validatePassword} from '../utils/passwordValidator';
 
 const MODULES: (keyof Permissions)[] = [
   'cumpleanios',
@@ -100,10 +105,21 @@ export default function UsuarioFormScreen({route, navigation}: any) {
       Alert.alert('Error', 'La contraseña es obligatoria');
       return;
     }
+    if (password.trim()) {
+      const pwError = validatePassword(password.trim());
+      if (pwError) {
+        Alert.alert('Error', pwError);
+        return;
+      }
+    }
 
     try {
       if (isEdit && usuario) {
+        if (password.trim()) {
+          await updateUserPassword(usuario.uid, password.trim());
+        }
         await updateUserProfile(usuario.uid, {
+          username: username.trim(),
           nombre: nombre.trim(),
           email: email.trim(),
           cargo: cargo.trim(),
@@ -131,12 +147,13 @@ export default function UsuarioFormScreen({route, navigation}: any) {
       }
       navigation.goBack();
     } catch (e: any) {
+      console.error(e);
       const msg =
         e.code === 'auth/email-already-in-use'
           ? 'El correo ya está registrado'
           : e.code === 'auth/weak-password'
           ? 'La contraseña debe tener al menos 6 caracteres'
-          : 'Error al guardar usuario';
+          : e?.message ?? 'Error al guardar usuario';
       Alert.alert('Error', msg);
     }
   };
@@ -147,9 +164,12 @@ export default function UsuarioFormScreen({route, navigation}: any) {
       contentContainerStyle={styles.content}>
       <View style={[styles.card, {backgroundColor: colors.surface}]}>
         <Text style={[styles.sectionTitle, {color: colors.textPrimary}]}>
-          Datos del usuario
+          {isEdit ? 'Editar usuario' : 'Nuevo usuario'}
         </Text>
 
+        <Text style={[styles.label, {color: colors.textPrimary}]}>
+          Nombre completo
+        </Text>
         <TextInput
           style={[
             styles.input,
@@ -165,6 +185,9 @@ export default function UsuarioFormScreen({route, navigation}: any) {
           onChangeText={setNombre}
         />
 
+        <Text style={[styles.label, {color: colors.textPrimary}]}>
+          Cargo
+        </Text>
         <TextInput
           style={[
             styles.input,
@@ -180,51 +203,73 @@ export default function UsuarioFormScreen({route, navigation}: any) {
           onChangeText={setCargo}
         />
 
-        {!isEdit && (
-          <>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.primaryBg,
-                  color: colors.textPrimary,
-                  borderColor: colors.border,
-                },
-              ]}
-              placeholder="Nombre de usuario *"
-              placeholderTextColor={colors.textSecondary}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-            />
+        <Text style={[styles.label, {color: colors.textPrimary}]}>
+          Nombre de usuario
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.primaryBg,
+              color: colors.textPrimary,
+              borderColor: colors.border,
+            },
+          ]}
+          placeholder="Nombre de usuario"
+          placeholderTextColor={colors.textSecondary}
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
 
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.passwordInput,
-                  {
-                    backgroundColor: colors.primaryBg,
-                    color: colors.textPrimary,
-                    borderColor: colors.border,
-                  },
-                ]}
-                placeholder="Contraseña"
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                style={styles.eyeBtn}
-                onPress={() => setShowPassword(prev => !prev)}>
-                <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}>
-                  {showPassword ? '🙈' : '👁'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+        <Text style={[styles.label, {color: colors.textPrimary}]}>
+          Correo electrónico
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.primaryBg,
+              color: colors.textPrimary,
+              borderColor: colors.border,
+            },
+          ]}
+          placeholder="Correo electrónico"
+          placeholderTextColor={colors.textSecondary}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        <Text style={[styles.label, {color: colors.textPrimary}]}>
+          {isEdit ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}
+        </Text>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={[
+              styles.input,
+              styles.passwordInput,
+              {
+                backgroundColor: colors.primaryBg,
+                color: colors.textPrimary,
+                borderColor: colors.border,
+              },
+            ]}
+            placeholder={isEdit ? 'Nueva contraseña' : 'Contraseña'}
+            placeholderTextColor={colors.textSecondary}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowPassword(prev => !prev)}>
+            <Text style={[styles.eyeIcon, {color: colors.textSecondary}]}>
+              {showPassword ? '🙈' : '👁'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.switchRow}>
           <Text style={[{color: colors.textPrimary}]}>Administrador</Text>
@@ -303,6 +348,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     marginBottom: 12,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
   },
   passwordContainer: {
     width: '100%',

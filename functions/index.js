@@ -3,19 +3,53 @@ const admin = require('firebase-admin');
 
 admin.initializeApp();
 
-exports.updateUserPassword = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
+const PASSWORD_REGEX = /^(?=.*[a-zA-Z])(?=.*\d).{6,}$/;
+
+function validatePassword(password) {
+  if (!password || password.length < 6) {
     throw new functions.https.HttpsError(
-      'unauthenticated',
-      'Debes iniciar sesión',
+      'invalid-argument',
+      'La contraseña debe tener al menos 6 caracteres',
     );
   }
+  if (!PASSWORD_REGEX.test(password)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'La contraseña debe contener al menos una letra y un número',
+    );
+  }
+}
 
-  const callerUid = context.auth.uid;
+async function resolveAuth(arg) {
+  if (arg.auth) return arg.auth;
+
+  const rawToken = arg.data && arg.data.__authToken;
+  if (rawToken) {
+    try {
+      const decoded = await admin.auth().verifyIdToken(rawToken);
+      return {uid: decoded.uid, token: decoded};
+    } catch (e) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'Token de autenticación inválido',
+      );
+    }
+  }
+
+  throw new functions.https.HttpsError(
+    'unauthenticated',
+    'Debes iniciar sesión',
+  );
+}
+
+exports.updateUserPassword = functions.https.onCall(async arg => {
+  const auth = await resolveAuth(arg);
+  const {data} = arg;
+
   const callerDoc = await admin
     .firestore()
     .collection('usuarios')
-    .doc(callerUid)
+    .doc(auth.uid)
     .get();
   const callerProfile = callerDoc.data();
 
@@ -35,31 +69,21 @@ exports.updateUserPassword = functions.https.onCall(async (data, context) => {
     );
   }
 
-  if (newPassword.length < 6) {
-    throw new functions.https.HttpsError(
-      'invalid-argument',
-      'La contraseña debe tener al menos 6 caracteres',
-    );
-  }
+  validatePassword(newPassword);
 
   await admin.auth().updateUser(uid, {password: newPassword});
 
   return {success: true};
 });
 
-exports.createUser = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'Debes iniciar sesión',
-    );
-  }
+exports.createUser = functions.https.onCall(async arg => {
+  const auth = await resolveAuth(arg);
+  const {data} = arg;
 
-  const callerUid = context.auth.uid;
   const callerDoc = await admin
     .firestore()
     .collection('usuarios')
-    .doc(callerUid)
+    .doc(auth.uid)
     .get();
   const callerProfile = callerDoc.data();
 
@@ -79,12 +103,7 @@ exports.createUser = functions.https.onCall(async (data, context) => {
     );
   }
 
-  if (password.length < 6) {
-    throw new functions.https.HttpsError(
-      'invalid-argument',
-      'La contraseña debe tener al menos 6 caracteres',
-    );
-  }
+  validatePassword(password);
 
   const userRecord = await admin.auth().createUser({
     email,
@@ -99,7 +118,7 @@ exports.createUser = functions.https.onCall(async (data, context) => {
     ...profile,
     email,
     created_at: now,
-    created_by: callerUid,
+    created_by: auth.uid,
   };
 
   await admin.firestore().collection('usuarios').doc(uid).set(userDoc);

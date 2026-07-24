@@ -13,9 +13,13 @@ import {
 import {useFocusEffect} from '@react-navigation/native';
 import {useTheme} from '../context/ThemeContext';
 import {useAuth} from '../context/AuthContext';
-import {getFunctions} from '../database/firebase';
 import type {UserProfile} from '../database/types';
-import {getAllUsers, deleteUserProfile} from '../database/usuarios';
+import {
+  getAllUsers,
+  deleteUserProfile,
+  updateUserPassword,
+} from '../database/usuarios';
+import {validatePassword} from '../utils/passwordValidator';
 
 export default function UsuariosScreen({navigation}: any) {
   const {colors} = useTheme();
@@ -70,27 +74,28 @@ export default function UsuariosScreen({navigation}: any) {
       Alert.alert('Error', 'Ingresa la nueva contraseña');
       return;
     }
-    if (pass.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    const error = validatePassword(pass);
+    if (error) {
+      Alert.alert('Error', error);
       return;
     }
 
     setResetLoading(true);
     try {
-      const cloudFn = getFunctions().httpsCallable('updateUserPassword');
-      await cloudFn({uid: resetTarget.uid, newPassword: pass});
-      Alert.alert(
-        'Contraseña actualizada',
-        `La contraseña de ${resetTarget.nombre} se cambió correctamente.`,
-      );
+      await updateUserPassword(resetTarget.uid, pass);
+      const nombre = resetTarget.nombre;
       setResetTarget(null);
       setNewPassword('');
+      setResetLoading(false);
+      Alert.alert(
+        'Contraseña actualizada',
+        `La contraseña de ${nombre} se cambió correctamente.`,
+      );
     } catch (e: any) {
+      setResetLoading(false);
       const msg =
         e?.message ?? 'No se pudo cambiar la contraseña';
       Alert.alert('Error', msg);
-    } finally {
-      setResetLoading(false);
     }
   };
 
@@ -117,6 +122,9 @@ export default function UsuariosScreen({navigation}: any) {
       </View>
       <Text style={[styles.email, {color: colors.textSecondary}]}>
         {item.email}
+      </Text>
+      <Text style={[styles.username, {color: colors.textSecondary}]}>
+        @{item.username}
       </Text>
       <Text style={[styles.cargo, {color: colors.textSecondary}]}>
         {item.cargo}
@@ -326,6 +334,11 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 13,
     marginTop: 2,
+  },
+  username: {
+    fontSize: 13,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   cargo: {
     fontSize: 13,

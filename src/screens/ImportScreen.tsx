@@ -168,7 +168,7 @@ export default function ImportScreen({navigation}: any) {
           {rows.slice(0, 5).map((row, ri) => (
             <View key={ri} style={[styles.previewRow, {backgroundColor: colors.surface, borderColor: colors.border}]}>
               {Object.entries(mapping).map(([colIdx, campo]) => (
-                <Text key={campo} style={[styles.previewCell, {color: colors.textPrimary}]}>
+                <Text key={colIdx} style={[styles.previewCell, {color: colors.textPrimary}]}>
                   {campo}: {formatearPreview(row[Number(colIdx)])}
                 </Text>
               ))}

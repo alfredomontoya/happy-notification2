@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "personas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "birthday_month", "order": "ASCENDING" },
+        { "fieldPath": "birthday_day", "order": "ASCENDING" }
+      ]
+    }
+  ]
+}
