@@ -10,10 +10,12 @@ import {
   View,
 } from 'react-native';
 import {useTheme} from '../context/ThemeContext';
+import {useAuth} from '../context/AuthContext';
 import {Persona} from '../database/types';
 import {getAllPersonas, refreshPersonas} from '../database/personas';
 import {getCachedPersonas} from '../database/personasCache';
-import {FiltroFecha} from '../utils/filtros';
+import {FiltroFecha, filtrarPersonas, getResultMessage} from '../utils/filtros';
+import {can, canAccess, getFirstAvailableScreen} from '../utils/permissions';
 import {format} from 'date-fns';
 import {es} from 'date-fns/locale';
 import PersonaCard from '../components/PersonaCard';
@@ -44,9 +46,18 @@ function getMonthDay(): {month: number; day: number} {
 
 export default function HomeScreen({navigation}: any) {
   const {colors} = useTheme();
+  const {user} = useAuth();
+  const canView = canAccess(user?.permissions, 'cumpleanios');
+
+  useEffect(() => {
+    if (!canView) {
+      navigation.navigate(getFirstAvailableScreen(user?.permissions));
+    }
+  }, [canView, navigation, user?.permissions]);
+
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [query, setQuery] = useState('');
-  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>(null);
+  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('todos');
   const [showBanner, setShowBanner] = useState(false);
   const [bannerData, setBannerData] = useState<{names: string[]}>({names: []});
   const [refreshing, setRefreshing] = useState(false);
@@ -135,35 +146,13 @@ export default function HomeScreen({navigation}: any) {
     setFiltroFecha(filtro);
   }, []);
 
-  const filtradas = (() => {
-    let result = personas;
-
-    if (filtroFecha === 'hoy') {
-      const {month, day} = getMonthDay();
-      result = result.filter(
-        p =>
-          (p.birthday_month === month && p.birthday_day === day),
-      );
-    } else if (filtroFecha === 'mes') {
-      const {month} = getMonthDay();
-      result = result.filter(p => p.birthday_month === month);
-    }
-
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      result = result.filter(
-        p =>
-          p.nombre.toLowerCase().includes(q) ||
-          p.ci.toLowerCase().includes(q),
-      );
-    }
-
-    return result;
-  })();
+  const filtradas = filtrarPersonas(personas, query, filtroFecha);
 
   const fechaActual = format(new Date(), "EEEE d 'de' MMMM yyyy, HH:mm", {
     locale: es,
   });
+
+  if (!canView) return null;
 
   return (
     <View style={[styles.container, {backgroundColor: colors.primaryBg}]}>
@@ -199,6 +188,7 @@ export default function HomeScreen({navigation}: any) {
         </View>
       </View>
 
+      {/* INPUT DE BÚSQUEDA */}
       <View style={styles.searchContainer}>
         <TextInput
           style={[
@@ -216,44 +206,56 @@ export default function HomeScreen({navigation}: any) {
         />
       </View>
 
+      {/* CHIPS DE FILTRO (Todos / Hoy / Semana / Mes) */}
       <FiltroChips filtroActivo={filtroFecha} onChange={handleChipChange} />
 
-      <FlatList
-        data={filtradas}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
-          <PersonaCard
-            persona={item}
-            onPress={() => navigation.navigate('Detail', {persona: item})}
-          />
-        )}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={[styles.emptyText, {color: colors.textSecondary}]}>
-              No se encontraron personas
-            </Text>
-          </View>
-        }
-      />
+      {filtradas.length > 0 && (
+        <Text style={[styles.resultCount, {color: colors.textSecondary}]}>
+          {getResultMessage(filtroFecha, filtradas.length)}
+        </Text>
+      )}
 
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={[styles.fab, {backgroundColor: colors.primary}]}
-          onPress={() => navigation.navigate('Form', {persona: null})}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
+      {/* LISTA DE CUMPLEAÑEROS (ScrollView) */}
+      <View style={styles.listWrapper}>
+        <FlatList
+          data={filtradas}
+          keyExtractor={item => item.id}
+          renderItem={({item}) => (
+            <PersonaCard
+              persona={item}
+              onPress={() => navigation.navigate('Detail', {persona: item})}
+            />
+          )}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>📋</Text>
+              <Text style={[styles.emptyText, {color: colors.textSecondary}]}>
+                No se encontraron personas
+              </Text>
+            </View>
+          }
+        />
       </View>
+
+      {can(user?.permissions, 'cumpleanios', 'create') && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            style={[styles.fab, {backgroundColor: colors.primary}]}
+            onPress={() => navigation.navigate('Form', {persona: null})}>
+            <Text style={styles.fabText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -284,7 +286,7 @@ const styles = StyleSheet.create({
   },
   menuBtn: {marginLeft: 8, padding: 4},
   menuIcon: {fontSize: 24, color: '#FFFFFF'},
-  searchContainer: {paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4},
+  searchContainer: {paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, height: 64},
   searchInput: {
     borderRadius: 16,
     paddingHorizontal: 16,
@@ -293,8 +295,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     elevation: 2,
   },
-  list: {paddingTop: 8, paddingBottom: 100},
-  empty: {alignItems: 'center', marginTop: 80},
+  resultCount: {
+    paddingHorizontal: 16,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  list: {paddingBottom: 100},
+  listWrapper: {flex: 1, paddingTop: 8},
+  empty: {alignItems: 'center'},
   emptyIcon: {fontSize: 48, marginBottom: 12},
   emptyText: {fontSize: 16},
   fabContainer: {

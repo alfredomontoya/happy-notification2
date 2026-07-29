@@ -23,6 +23,7 @@ const MODULES: (keyof Permissions)[] = [
   'funcionarios',
   'gestiones',
   'configuracion',
+  'usuarios',
 ];
 
 const LEVELS: PermissionLevel[] = ['none', 'read', 'write', 'admin'];
@@ -85,6 +86,7 @@ export default function UsuarioFormScreen({route, navigation}: any) {
       funcionarios: 'none',
       gestiones: 'none',
       configuracion: 'none',
+      usuarios: 'none',
     },
   );
 
@@ -126,7 +128,10 @@ export default function UsuarioFormScreen({route, navigation}: any) {
           role,
           permissions,
         });
-        Alert.alert('Éxito', 'Usuario actualizado');
+        const msg = password.trim()
+          ? 'Contraseña de usuario reseteada correctamente'
+          : 'Usuario actualizado correctamente';
+        Alert.alert('Éxito', msg);
       } else {
         const autoEmail = email.trim()
           ? email.trim()
@@ -153,6 +158,12 @@ export default function UsuarioFormScreen({route, navigation}: any) {
           ? 'El correo ya está registrado'
           : e.code === 'auth/weak-password'
           ? 'La contraseña debe tener al menos 6 caracteres'
+          : e.code === 'functions/unauthenticated'
+          ? 'Debes iniciar sesión para realizar esta acción'
+          : e.code === 'functions/permission-denied'
+          ? 'No tienes permisos de administrador'
+          : e.code === 'functions/invalid-argument'
+          ? e.message
           : e?.message ?? 'Error al guardar usuario';
       Alert.alert('Error', msg);
     }

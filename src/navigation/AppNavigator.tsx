@@ -2,7 +2,8 @@ import {useTheme} from '../context/ThemeContext';
 import {useAuth} from '../context/AuthContext';
 import {createDrawerNavigator} from '@react-navigation/drawer';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {Switch, View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {getFirstAvailableScreen} from '../utils/permissions';
 
 import HomeScreen from '../screens/HomeScreen';
 import DetailScreen from '../screens/DetailScreen';
@@ -176,6 +177,24 @@ function PerfilStack() {
   );
 }
 
+function CreditsStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {backgroundColor: '#0D9488'},
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {fontWeight: '600'},
+        contentStyle: {backgroundColor: '#F0FDF4'},
+      }}>
+      <Stack.Screen
+        name="Credits"
+        component={CreditsScreen}
+        options={{title: 'Créditos'}}
+      />
+    </Stack.Navigator>
+  );
+}
+
 function UsuariosStack() {
   return (
     <Stack.Navigator
@@ -202,11 +221,11 @@ function UsuariosStack() {
 }
 
 function CustomDrawerContent({navigation}: any) {
-  const {colors} = useTheme();
+  const {colors, mode, toggleTheme} = useTheme();
   const {user, logout} = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  type PermissionKeys = 'cumpleanios' | 'funcionarios' | 'gestiones' | 'configuracion';
+  type PermissionKeys = 'cumpleanios' | 'funcionarios' | 'gestiones' | 'configuracion' | 'usuarios';
 
   interface DrawerItem {
     label: string;
@@ -220,11 +239,9 @@ function CustomDrawerContent({navigation}: any) {
     {label: '📁 Gestión', screen: 'Gestión', permission: 'gestiones'},
     {label: '⚙️ Configuración', screen: 'Configuración', permission: 'configuracion'},
     {label: '👤 Perfil', screen: 'Perfil'},
+    {label: '🔐 Usuarios', screen: 'Usuarios', permission: 'usuarios'},
+    {label: 'ℹ️ Créditos', screen: 'Créditos'},
   ];
-
-  if (isAdmin) {
-    allItems.push({label: '🔐 Usuarios', screen: 'Usuarios'});
-  }
 
   const visibleItems = allItems.filter(item => {
     if (!item.permission || isAdmin) return true;
@@ -263,6 +280,18 @@ function CustomDrawerContent({navigation}: any) {
         ))}
       </View>
 
+      <View style={[styles.drawerItem, styles.drawerItemRow, {borderBottomColor: colors.border}]}>
+        <Text style={[styles.drawerItemText, {color: colors.textPrimary}]}>
+          🌙 Modo oscuro
+        </Text>
+        <Switch
+          value={mode === 'dark'}
+          onValueChange={toggleTheme}
+          trackColor={{false: colors.border, true: colors.primaryLight}}
+          thumbColor={mode === 'dark' ? colors.primary : '#f4f3f4'}
+        />
+      </View>
+
       <TouchableOpacity
         style={[styles.logoutBtn, {borderTopColor: colors.border}]}
         onPress={logout}>
@@ -276,9 +305,12 @@ function CustomDrawerContent({navigation}: any) {
 
 export default function AppNavigator() {
   const {mode} = useTheme();
+  const {user} = useAuth();
+  const initialRoute = getFirstAvailableScreen(user?.permissions);
 
   return (
     <Drawer.Navigator
+      initialRouteName={initialRoute}
       drawerContent={props => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
@@ -294,6 +326,7 @@ export default function AppNavigator() {
       <Drawer.Screen name="Configuración" component={ConfiguracionStack} />
       <Drawer.Screen name="Perfil" component={PerfilStack} />
       <Drawer.Screen name="Usuarios" component={UsuariosStack} />
+      <Drawer.Screen name="Créditos" component={CreditsStack} />
     </Drawer.Navigator>
   );
 }
@@ -337,6 +370,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
+  },
+  drawerItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   drawerItemText: {
     fontSize: 16,

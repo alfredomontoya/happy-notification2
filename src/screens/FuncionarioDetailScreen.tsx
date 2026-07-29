@@ -1,10 +1,13 @@
 import {Alert, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useTheme} from '../context/ThemeContext';
+import {useAuth} from '../context/AuthContext';
 import {Funcionario} from '../database/types';
 import {deleteFuncionario} from '../database/funcionarios';
+import {can} from '../utils/permissions';
 
 export default function FuncionarioDetailScreen({route, navigation}: any) {
   const {colors} = useTheme();
+  const {user} = useAuth();
   const funcionario: Funcionario = route.params.funcionario;
 
   const nombreCompleto =
@@ -78,21 +81,27 @@ export default function FuncionarioDetailScreen({route, navigation}: any) {
           />
         </View>
 
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.btn, {backgroundColor: colors.primary}]}
-            onPress={() =>
-              navigation.navigate('FuncionarioForm', {funcionario})
-            }>
-            <Text style={styles.btnText}>Editar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.btn, {backgroundColor: colors.danger}]}
-            onPress={handleDelete}>
-            <Text style={styles.btnText}>Eliminar</Text>
-          </TouchableOpacity>
-        </View>
+        {can(user?.permissions, 'funcionarios', 'edit') ||
+        can(user?.permissions, 'funcionarios', 'delete') ? (
+          <View style={styles.actions}>
+            {can(user?.permissions, 'funcionarios', 'edit') && (
+              <TouchableOpacity
+                style={[styles.btn, {backgroundColor: colors.primary}]}
+                onPress={() =>
+                  navigation.navigate('FuncionarioForm', {funcionario})
+                }>
+                <Text style={styles.btnText}>Editar</Text>
+              </TouchableOpacity>
+            )}
+            {can(user?.permissions, 'funcionarios', 'delete') && (
+              <TouchableOpacity
+                style={[styles.btn, {backgroundColor: colors.danger}]}
+                onPress={handleDelete}>
+                <Text style={styles.btnText}>Eliminar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
       </View>
     </View>
   );

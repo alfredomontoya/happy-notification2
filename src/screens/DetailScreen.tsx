@@ -1,10 +1,13 @@
 import {Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useTheme} from '../context/ThemeContext';
+import {useAuth} from '../context/AuthContext';
 import {Persona} from '../database/types';
 import {deletePersona} from '../database/personas';
+import {can} from '../utils/permissions';
 
 export default function DetailScreen({route, navigation}: any) {
   const {colors} = useTheme();
+  const {user} = useAuth();
   const persona: Persona = route.params.persona;
 
   const handleDelete = () => {
@@ -64,18 +67,25 @@ export default function DetailScreen({route, navigation}: any) {
         ))}
       </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.editBtn, {backgroundColor: colors.primary}]}
-          onPress={() =>
-            navigation.navigate('Form', {persona})
-          }>
-          <Text style={[styles.editBtnText, {color: colors.white}]}>Editar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.deleteBtn, {backgroundColor: colors.surface, borderColor: colors.danger}]} onPress={handleDelete}>
-          <Text style={[styles.deleteBtnText, {color: colors.danger}]}>Eliminar</Text>
-        </TouchableOpacity>
-      </View>
+      {can(user?.permissions, 'cumpleanios', 'edit') ||
+      can(user?.permissions, 'cumpleanios', 'delete') ? (
+        <View style={styles.actions}>
+          {can(user?.permissions, 'cumpleanios', 'edit') && (
+            <TouchableOpacity
+              style={[styles.editBtn, {backgroundColor: colors.primary}]}
+              onPress={() =>
+                navigation.navigate('Form', {persona})
+              }>
+              <Text style={[styles.editBtnText, {color: colors.white}]}>Editar</Text>
+            </TouchableOpacity>
+          )}
+          {can(user?.permissions, 'cumpleanios', 'delete') && (
+            <TouchableOpacity style={[styles.deleteBtn, {backgroundColor: colors.surface, borderColor: colors.danger}]} onPress={handleDelete}>
+              <Text style={[styles.deleteBtnText, {color: colors.danger}]}>Eliminar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }

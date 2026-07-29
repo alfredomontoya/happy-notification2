@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,6 +14,7 @@ import {useTheme} from '../context/ThemeContext';
 import {useAuth} from '../context/AuthContext';
 import {Funcionario} from '../database/types';
 import {createFuncionario, updateFuncionario} from '../database/funcionarios';
+import {can} from '../utils/permissions';
 
 export default function FuncionarioFormScreen({route, navigation}: any) {
   const {colors} = useTheme();
@@ -22,6 +23,13 @@ export default function FuncionarioFormScreen({route, navigation}: any) {
   const gestionId: string =
     route.params?.gestionId ?? existing?.gestion_id ?? '';
   const isEdit = !!existing;
+  const canAccess = can(user?.permissions, 'funcionarios', isEdit ? 'edit' : 'create');
+
+  useEffect(() => {
+    if (!canAccess) {
+      navigation.goBack();
+    }
+  }, [canAccess, navigation]);
 
   const [nro, setNro] = useState(existing?.nro ?? '');
   const [ci, setCi] = useState(existing?.ci ?? '');
@@ -67,6 +75,8 @@ export default function FuncionarioFormScreen({route, navigation}: any) {
 
     navigation.goBack();
   };
+
+  if (!canAccess) return null;
 
   return (
     <KeyboardAvoidingView

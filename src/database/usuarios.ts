@@ -5,9 +5,7 @@ import type {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
 
 async function callFunction(name: string, data: Record<string, any>) {
   const user = auth().currentUser;
-  console.log('callFunction: user?', !!user, 'name:', name);
   const token = user ? await user.getIdToken(true) : null;
-  console.log('callFunction: token?', !!token);
   const cloudFn = getFunctions().httpsCallable(name);
   const result = await cloudFn({...data, __authToken: token});
   return result;
@@ -98,6 +96,7 @@ export async function createAdminUserIfNotExists(): Promise<void> {
       funcionarios: 'admin',
       gestiones: 'admin',
       configuracion: 'admin',
+      usuarios: 'admin',
     };
     const adminDoc: UserProfile = {
       uid,
@@ -133,6 +132,7 @@ export async function createAdminUserIfNotExists(): Promise<void> {
               funcionarios: 'admin',
               gestiones: 'admin',
               configuracion: 'admin',
+              usuarios: 'admin',
             };
             const adminDoc: UserProfile = {
               uid: currentUid,

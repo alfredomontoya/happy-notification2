@@ -1,9 +1,10 @@
 import {Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {useTheme} from '../context/ThemeContext';
+import Logo from '../assets/logo.svg';
 
 const credits = [
-  {rol: 'PROGRAMADOR BACKEND', nombre: 'ING. ALFREDO MONTOYA'},
-  {rol: 'PROGRAMADOR FRONTEND', nombre: 'ING. CRISTIAN PIZARROSO'},
+  {rol: '👨‍💻 DESARROLLADOR BACKEND', nombre: 'ING. ALFREDO MONTOYA'},
+  {rol: '🎨 DESARROLLADOR FRONTEND', nombre: 'ING. CRISTIAN PIZARROSO'},
 ];
 
 export default function CreditsScreen() {
@@ -13,9 +14,7 @@ export default function CreditsScreen() {
       style={[styles.container, {backgroundColor: colors.primaryBg}]}
       contentContainerStyle={styles.content}>
       <View style={[styles.card, {backgroundColor: colors.surface}]}>
-        <View style={[styles.iconCircle, {backgroundColor: colors.primary}]}>
-          <Text style={[styles.iconText, {color: colors.white}]}>SC</Text>
-        </View>
+        <Logo width={220} height={74} style={styles.logo} />
         <Text style={[styles.title, {color: colors.textPrimary}]}>Créditos</Text>
 
         <View style={[styles.divider, {backgroundColor: colors.border}]} />
@@ -61,18 +60,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
     marginBottom: 16,
-  },
-  iconText: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 2,
   },
   title: {
     fontSize: 24,

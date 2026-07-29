@@ -8,12 +8,15 @@ import {
   View,
 } from 'react-native';
 import {useTheme} from '../context/ThemeContext';
+import {useAuth} from '../context/AuthContext';
 import {Gestion} from '../database/types';
 import {getAllGestiones, deleteGestion} from '../database/gestion';
 import {countFuncionariosByGestion} from '../database/funcionarios';
+import {can} from '../utils/permissions';
 
 export default function GestionListScreen({navigation}: any) {
   const {colors} = useTheme();
+  const {user} = useAuth();
   const [gestiones, setGestiones] = useState<Gestion[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
 
@@ -74,13 +77,22 @@ export default function GestionListScreen({navigation}: any) {
       <FlatList
         data={gestiones}
         keyExtractor={item => item.id}
-        renderItem={({item}) => (
+        renderItem={({item}) => {
+          const canEdit = can(user?.permissions, 'gestiones', 'edit');
+          const canDel = can(user?.permissions, 'gestiones', 'delete');
+          return (
           <TouchableOpacity
             style={[styles.card, {backgroundColor: colors.surface}]}
-            onPress={() =>
-              navigation.navigate('GestionForm', {gestion: item})
-            }
-            onLongPress={() => handleDelete(item)}
+            onPress={() => {
+              if (canEdit) {
+                navigation.navigate('GestionForm', {gestion: item});
+              }
+            }}
+            onLongPress={() => {
+              if (canDel) {
+                handleDelete(item);
+              }
+            }}
             activeOpacity={0.7}>
             <View style={styles.cardHeader}>
               <Text style={[styles.year, {color: colors.primary}]}>
@@ -127,7 +139,8 @@ export default function GestionListScreen({navigation}: any) {
               </Text>
             </View>
           </TouchableOpacity>
-        )}
+          );
+        }}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -140,15 +153,17 @@ export default function GestionListScreen({navigation}: any) {
         }
       />
 
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() =>
-            navigation.navigate('GestionForm', {gestion: null})
-          }>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      {can(user?.permissions, 'gestiones', 'create') && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() =>
+              navigation.navigate('GestionForm', {gestion: null})
+            }>
+            <Text style={styles.fabText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

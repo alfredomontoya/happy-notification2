@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,13 +15,23 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker';
 import {format} from 'date-fns';
 import {useTheme} from '../context/ThemeContext';
+import {useAuth} from '../context/AuthContext';
 import {Persona} from '../database/types';
 import {createPersona, updatePersona} from '../database/personas';
+import {can} from '../utils/permissions';
 
 export default function FormScreen({route, navigation}: any) {
   const {colors} = useTheme();
+  const {user} = useAuth();
   const persona: Persona | null = route.params.persona;
   const isEditing = persona !== null;
+  const canAccess = can(user?.permissions, 'cumpleanios', isEditing ? 'edit' : 'create');
+
+  useEffect(() => {
+    if (!canAccess) {
+      navigation.goBack();
+    }
+  }, [canAccess, navigation]);
 
   const parseDate = (str: string): Date => {
     const d = new Date(str);
@@ -76,6 +86,8 @@ export default function FormScreen({route, navigation}: any) {
       Alert.alert('Error', error.message ?? 'Ocurrió un error al guardar');
     }
   };
+
+  if (!canAccess) return null;
 
   return (
     <KeyboardAvoidingView

@@ -20,10 +20,12 @@ function validatePassword(password) {
   }
 }
 
-async function resolveAuth(arg) {
-  if (arg.auth) return arg.auth;
+async function resolveAuth(req) {
+  if (req.auth && req.auth.uid) {
+    return {uid: req.auth.uid};
+  }
 
-  const rawToken = arg.data && arg.data.__authToken;
+  const rawToken = req.data && req.data.__authToken;
   if (rawToken) {
     try {
       const decoded = await admin.auth().verifyIdToken(rawToken);
@@ -42,16 +44,24 @@ async function resolveAuth(arg) {
   );
 }
 
-exports.updateUserPassword = functions.https.onCall(async arg => {
-  const auth = await resolveAuth(arg);
-  const {data} = arg;
+function getPayload(req) {
+  return req.data || req;
+}
 
-  const callerDoc = await admin
+async function getCallerProfile(uid) {
+  const doc = await admin
     .firestore()
     .collection('usuarios')
-    .doc(auth.uid)
+    .doc(uid)
     .get();
-  const callerProfile = callerDoc.data();
+  return doc.data();
+}
+
+exports.updateUserPassword = functions.https.onCall(async req => {
+  const payload = getPayload(req);
+  const auth = await resolveAuth(req);
+
+  const callerProfile = await getCallerProfile(auth.uid);
 
   if (!callerProfile || callerProfile.role !== 'admin') {
     throw new functions.https.HttpsError(
@@ -60,7 +70,7 @@ exports.updateUserPassword = functions.https.onCall(async arg => {
     );
   }
 
-  const {uid, newPassword} = data;
+  const {uid, newPassword} = payload;
 
   if (!uid || !newPassword) {
     throw new functions.https.HttpsError(
@@ -76,16 +86,11 @@ exports.updateUserPassword = functions.https.onCall(async arg => {
   return {success: true};
 });
 
-exports.createUser = functions.https.onCall(async arg => {
-  const auth = await resolveAuth(arg);
-  const {data} = arg;
+exports.createUser = functions.https.onCall(async req => {
+  const payload = getPayload(req);
+  const auth = await resolveAuth(req);
 
-  const callerDoc = await admin
-    .firestore()
-    .collection('usuarios')
-    .doc(auth.uid)
-    .get();
-  const callerProfile = callerDoc.data();
+  const callerProfile = await getCallerProfile(auth.uid);
 
   if (!callerProfile || callerProfile.role !== 'admin') {
     throw new functions.https.HttpsError(
@@ -94,7 +99,7 @@ exports.createUser = functions.https.onCall(async arg => {
     );
   }
 
-  const {email, password, profile} = data;
+  const {email, password, profile} = payload;
 
   if (!email || !password || !profile) {
     throw new functions.https.HttpsError(

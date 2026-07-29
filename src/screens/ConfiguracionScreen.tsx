@@ -3,10 +3,13 @@ import {useTheme} from '../context/ThemeContext';
 import {useAuth} from '../context/AuthContext';
 import {setupNotifications, cancelAllNotifications} from '../services/notifications';
 import {limpiarPersonas} from '../database/personas';
+import {canAccess} from '../utils/permissions';
 
 export default function ConfiguracionScreen({navigation}: any) {
   const {colors, mode, toggleTheme} = useTheme();
-  const {logout} = useAuth();
+  const {user, logout} = useAuth();
+  const hasConfigAccess = canAccess(user?.permissions, 'configuracion');
+  const isConfigAdmin = user?.permissions?.configuracion === 'admin';
 
   const handleImport = () => {
     navigation.navigate('Import');
@@ -86,46 +89,55 @@ export default function ConfiguracionScreen({navigation}: any) {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: colors.textSecondary}]}>
-          NOTIFICACIONES
-        </Text>
-        <View style={[styles.card, {backgroundColor: colors.surface}]}>
-          <OptionRow
-            label="Reconfigurar notificaciones"
-            onPress={async () => {
-              await setupNotifications();
-              Alert.alert('Listo', 'Notificaciones reconfiguradas');
-            }}
-          />
-          <OptionRow
-            label="Cancelar todas las notificaciones"
-            onPress={async () => {
-              await cancelAllNotifications();
-              Alert.alert('Listo', 'Notificaciones canceladas');
-            }}
-          />
+      {hasConfigAccess && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, {color: colors.textSecondary}]}>
+            NOTIFICACIONES
+          </Text>
+          <View style={[styles.card, {backgroundColor: colors.surface}]}>
+            <OptionRow
+              label="Reconfigurar notificaciones"
+              onPress={async () => {
+                await setupNotifications();
+                Alert.alert('Listo', 'Notificaciones reconfiguradas');
+              }}
+            />
+            <OptionRow
+              label="Cancelar todas las notificaciones"
+              onPress={async () => {
+                await cancelAllNotifications();
+                Alert.alert('Listo', 'Notificaciones canceladas');
+              }}
+            />
+          </View>
         </View>
-      </View>
+      )}
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: colors.textSecondary}]}>
-          DATOS
-        </Text>
-        <View style={[styles.card, {backgroundColor: colors.surface}]}>
-          <OptionRow label="Importar Excel" onPress={handleImport} />
-          <OptionRow label="Limpiar datos" onPress={handleClearData} />
+      {isConfigAdmin && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, {color: colors.textSecondary}]}>
+            DATOS DE CUMPLEAÑEROS
+          </Text>
+          <View style={[styles.card, {backgroundColor: colors.surface}]}>
+            <OptionRow label="Importar Excel" onPress={handleImport} />
+            <OptionRow label="Limpiar datos" onPress={handleClearData} />
+          </View>
+          <Text style={[styles.hintText, {color: colors.textSecondary}]}>
+            Para importar datos de funcionarios, debes realizarlos desde el módulo Gestión
+          </Text>
         </View>
-      </View>
+      )}
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: colors.textSecondary}]}>
-          INFORMACIÓN
-        </Text>
-        <View style={[styles.card, {backgroundColor: colors.surface}]}>
-          <OptionRow label="Créditos" onPress={handleCredits} />
+      {hasConfigAccess && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, {color: colors.textSecondary}]}>
+            INFORMACIÓN
+          </Text>
+          <View style={[styles.card, {backgroundColor: colors.surface}]}>
+            <OptionRow label="Créditos" onPress={handleCredits} />
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={styles.section}>
         <TouchableOpacity
@@ -193,6 +205,12 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  hintText: {
+    fontSize: 12,
+    marginTop: 8,
+    marginLeft: 4,
+    lineHeight: 16,
   },
   logoutBtn: {
     borderRadius: 12,

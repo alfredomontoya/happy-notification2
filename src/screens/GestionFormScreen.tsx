@@ -16,6 +16,7 @@ import {useTheme} from '../context/ThemeContext';
 import {useAuth} from '../context/AuthContext';
 import {Gestion} from '../database/types';
 import {createGestion, updateGestion} from '../database/gestion';
+import {can} from '../utils/permissions';
 import {
   countFuncionariosByGestion,
   deleteFuncionariosByGestion,
@@ -26,6 +27,13 @@ export default function GestionFormScreen({route, navigation}: any) {
   const {user} = useAuth();
   const existing: Gestion | null = route.params?.gestion ?? null;
   const isEdit = !!existing;
+  const canAccess = can(user?.permissions, 'gestiones', isEdit ? 'edit' : 'create');
+
+  useEffect(() => {
+    if (!canAccess) {
+      navigation.goBack();
+    }
+  }, [canAccess, navigation]);
 
   const [year, setYear] = useState(
     existing ? String(existing.year) : String(new Date().getFullYear()),
@@ -78,6 +86,8 @@ export default function GestionFormScreen({route, navigation}: any) {
     });
     navigation.goBack();
   };
+
+  if (!canAccess) return null;
 
   return (
     <KeyboardAvoidingView
@@ -157,17 +167,20 @@ export default function GestionFormScreen({route, navigation}: any) {
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                style={[styles.importBtn, {backgroundColor: colors.primary}]}
-                onPress={() =>
-                  navigation.navigate('ImportExcelFuncionarios', {
-                    gestionId: existing!.id,
-                  })
-                }>
-                <Text style={styles.importBtnText}>
-                  📥 Importar funcionarios
-                </Text>
-              </TouchableOpacity>
+              {can(user?.permissions, 'funcionarios', 'import') && (
+                <TouchableOpacity
+                  style={[styles.importBtn, {backgroundColor: colors.primary}]}
+                  onPress={() =>
+                    navigation.navigate('ImportExcelFuncionarios', {
+                      gestionId: existing!.id,
+                    })
+                  }>
+                  <Text style={styles.importBtnText}>
+                    📥 Importar funcionarios
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {can(user?.permissions, 'gestiones', 'delete') && (
               <TouchableOpacity
                 style={[styles.dangerBtn, {backgroundColor: colors.danger}]}
                 onPress={() => {
@@ -196,6 +209,7 @@ export default function GestionFormScreen({route, navigation}: any) {
                 }}>
                 <Text style={styles.dangerBtnText}>Limpiar datos</Text>
               </TouchableOpacity>
+              )}
             </>
           )}
         </View>

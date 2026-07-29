@@ -135,12 +135,6 @@ export async function getAllPersonas(): Promise<Persona[]> {
   const fromSqlite = await readFromSqliteAll();
   if (fromSqlite.length > 0) {
     setCachedPersonas(fromSqlite);
-    fetchFromFirestoreAll()
-      .then(async fresh => {
-        await cachePersonasInSqlite(fresh);
-        setCachedPersonas(fresh);
-      })
-      .catch(() => {});
     return fromSqlite;
   }
 

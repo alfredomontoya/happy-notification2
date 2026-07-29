@@ -9,13 +9,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useTheme} from '../context/ThemeContext';
+import {useAuth} from '../context/AuthContext';
 import {Funcionario, Gestion} from '../database/types';
 import {buscarFuncionarios} from '../database/funcionarios';
 import {getAllGestiones} from '../database/gestion';
+import {can} from '../utils/permissions';
 import PersonaCard from '../components/PersonaCard';
 
 export default function FuncionariosListScreen({navigation}: any) {
   const {colors} = useTheme();
+  const {user} = useAuth();
   const [gestiones, setGestiones] = useState<Gestion[]>([]);
   const [selectedGestionId, setSelectedGestionId] = useState<string | null>(
     null,
@@ -208,7 +211,7 @@ export default function FuncionariosListScreen({navigation}: any) {
       />
 
       <View style={styles.fabContainer}>
-        {selectedGestionId && (
+        {can(user?.permissions, 'funcionarios', 'import') && selectedGestionId && (
           <TouchableOpacity
             style={[styles.fabSmall, {backgroundColor: colors.primary}]}
             onPress={() =>
@@ -219,18 +222,20 @@ export default function FuncionariosListScreen({navigation}: any) {
             <Text style={styles.fabSmallText}>📊</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => {
-            if (selectedGestionId) {
-              navigation.navigate('FuncionarioForm', {
-                funcionario: null,
-                gestionId: selectedGestionId,
-              });
-            }
-          }}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
+        {can(user?.permissions, 'funcionarios', 'create') && (
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => {
+              if (selectedGestionId) {
+                navigation.navigate('FuncionarioForm', {
+                  funcionario: null,
+                  gestionId: selectedGestionId,
+                });
+              }
+            }}>
+            <Text style={styles.fabText}>+</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

@@ -263,7 +263,7 @@ export default function UsuariosScreen({navigation}: any) {
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={[styles.modalBtnText, {color: '#FFFFFF'}]}>
-                    Cambiar contraseña
+                    Resetear
                   </Text>
                 )}
               </TouchableOpacity>

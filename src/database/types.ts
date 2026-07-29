@@ -18,6 +18,7 @@ export interface Permissions {
   funcionarios: PermissionLevel;
   gestiones: PermissionLevel;
   configuracion: PermissionLevel;
+  usuarios: PermissionLevel;
 }
 
 export interface UserProfile {
