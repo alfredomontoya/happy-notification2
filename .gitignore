@@ -56,6 +56,9 @@ yarn-error.log
 # Bundle artifact
 *.jsbundle
 
+# Metro auto-generated drawable assets (copied from node_modules on build)
+android/app/src/main/res/drawable-*/node_modules_*
+
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
